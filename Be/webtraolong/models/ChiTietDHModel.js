@@ -26,15 +26,16 @@ class ChiTietDonHangModel {
   static async create (data) {
     return await db.execute(
       `INSERT INTO TRA_OLONG.CHI_TIET_DH
-        (MA_DH, MA_SP, SO_LUONG, DON_GIA)
+        (MA_CTDH, MA_DH, MA_SP, SO_LUONG, DON_GIA)
        VALUES
-        (:maDh, :maSp, :soLuong, :donGia)`,
+        (TRA_OLONG.SEQ_CTDH.NEXTVAL, :maDh, :maSp, :soLuong, :donGia)`,
       {
         maDh: data.ma_dh,
         maSp: data.ma_sp,
         soLuong: data.so_luong,
         donGia: data.don_gia
-      }
+      },
+      { autoCommit: true }
     )
   }
 

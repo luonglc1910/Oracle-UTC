@@ -36,12 +36,8 @@ class DonHangController {
     try {
       const { chi_tiet, ...donHangData } = req.body
 
-      await DonHangModel.create(donHangData)
-
-      // Lấy MA_DH vừa tạo
-      const db = require('../db/oracle')
-      const lastId = await db.execute(`SELECT MAX(MA_DH) AS MA_DH FROM TRA_OLONG.DON_HANG`)
-      const maDh = lastId.rows[0].MA_DH
+      // Tạo đơn hàng — model trả về MA_DH từ RETURNING INTO
+      const maDh = await DonHangModel.create(donHangData)
 
       // Thêm chi tiết đơn hàng
       if (chi_tiet && chi_tiet.length > 0) {

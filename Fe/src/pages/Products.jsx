@@ -84,7 +84,7 @@ export default function Products() {
                       Chi tiết
                     </Link>
                     <button className="btn-add" style={{ flex:2 }} disabled={!p.TON_KHO} onClick={() => handleAdd(p)}>
-                      🛒 Thêm giỏ
+                      🛒 Thêm giỏ hàng
                     </button>
                   </div>
                 </div>

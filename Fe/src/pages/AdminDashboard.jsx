@@ -5,7 +5,7 @@ import { useCart } from '../context/CartContext'
 import { formatPrice, formatDate, getTeaEmoji } from '../utils/helpers'
 import { showToast } from '../components/Toast'
 
-const MENU = ['Tổng quan', 'Sản phẩm', 'Đơn hàng', 'Khách hàng', 'Danh mục', 'Trạng thái đơn', 'Thống kê']
+const MENU = ['Tổng quan', 'Sản phẩm', 'Khách hàng', 'Danh mục', 'Trạng thái đơn', 'Thống kê']
 
 export default function AdminDashboard() {
   const { user, isAdmin, logoutUser } = useCart()
@@ -56,7 +56,7 @@ export default function AdminDashboard() {
               color: activeTab === m ? 'var(--gold-light)' : 'rgba(255,255,255,0.7)',
               borderLeft: activeTab === m ? '3px solid var(--gold)' : '3px solid transparent'
             }}>
-              {{'Tổng quan':'📊','Sản phẩm':'🍵','Đơn hàng':'📦','Khách hàng':'👥','Danh mục':'📂','Trạng thái đơn':'🔄','Thống kê':'📈'}[m]} {m}
+              {{'Tổng quan':'📊','Sản phẩm':'🍵','Khách hàng':'👥','Danh mục':'📂','Trạng thái đơn':'🔄','Thống kê':'📈'}[m]} {m}
             </button>
           ))}
         </nav>
@@ -75,7 +75,7 @@ export default function AdminDashboard() {
           <>
             {activeTab === 'Tổng quan' && <Overview data={data} revenue={revenue} />}
             {activeTab === 'Sản phẩm' && <ProductsTab products={data.products} categories={data.categories} onRefresh={() => sanPhamApi.getAll().then(r => setData(d => ({...d, products: r.data})))} />}
-            {activeTab === 'Đơn hàng' && <OrdersTab orders={data.orders} />}
+
             {activeTab === 'Khách hàng' && <CustomersTab customers={data.customers} />}
             {activeTab === 'Danh mục' && <CategoriesTab categories={data.categories} />}
             {activeTab === 'Trạng thái đơn' && <StatusTab orders={data.orders} onRefresh={refreshOrders} />}
@@ -377,12 +377,36 @@ function normalizeStatus(raw) {
 
 function StatusTab({ orders, onRefresh }) {
   const [filterStatus, setFilterStatus] = useState('all')
-  const [updating, setUpdating] = useState(null)
+  const [updating, setUpdating]         = useState(null)
+  const [selected, setSelected]         = useState([])   // array of MA_DH
+  const [bulkUpdating, setBulkUpdating] = useState(false)
 
   const filtered = filterStatus === 'all'
     ? orders
     : orders.filter(o => normalizeStatus(o.TRANG_THAI) === filterStatus)
 
+  // Reset selection khi đổi filter
+  const handleFilter = (s) => { setFilterStatus(s); setSelected([]) }
+
+  // Checkbox logic
+  const allIds       = filtered.map(o => o.MA_DH)
+  const isAllChecked = allIds.length > 0 && allIds.every(id => selected.includes(id))
+  const isIndeterminate = selected.length > 0 && !isAllChecked
+
+  const toggleAll = () => setSelected(isAllChecked ? [] : allIds)
+  const toggleOne = (id) => setSelected(prev =>
+    prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+  )
+
+  // Tìm trạng thái kế tiếp chung của các đơn được chọn
+  const selectedOrders = filtered.filter(o => selected.includes(o.MA_DH))
+  const commonNexts = (() => {
+    if (selectedOrders.length === 0) return []
+    const nextsPerOrder = selectedOrders.map(o => NEXT_MAP[normalizeStatus(o.TRANG_THAI)] || [])
+    return nextsPerOrder[0].filter(nk => nextsPerOrder.every(nexts => nexts.includes(nk)))
+  })()
+
+  // Cập nhật đơn đơn lẻ
   const handleNext = async (order, nextStatus) => {
     setUpdating(order.MA_DH)
     try {
@@ -394,20 +418,33 @@ function StatusTab({ orders, onRefresh }) {
     } finally { setUpdating(null) }
   }
 
-
+  // Cập nhật hàng loạt
+  const handleBulk = async (nextStatus) => {
+    if (selected.length === 0) return
+    setBulkUpdating(true)
+    let ok = 0, fail = 0
+    for (const id of selected) {
+      try { await donHangApi.updateStatus(id, nextStatus); ok++ }
+      catch { fail++ }
+    }
+    showToast(`✅ Đã cập nhật ${ok} đơn${fail ? ` (${fail} lỗi)` : ''} → ${statusMeta(nextStatus).label}`)
+    setSelected([])
+    setBulkUpdating(false)
+    onRefresh()
+  }
 
   return (
     <>
       {/* Bộ lọc */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-        <button onClick={() => setFilterStatus('all')} style={{
+        <button onClick={() => handleFilter('all')} style={{
           padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13,
           background: filterStatus === 'all' ? 'var(--green-mid)' : '#e5e7eb', color: filterStatus === 'all' ? 'white' : '#374151'
         }}>Tất cả ({orders.length})</button>
         {STATUS_LIST.map(s => {
           const cnt = orders.filter(o => normalizeStatus(o.TRANG_THAI) === s.key).length
           return (
-            <button key={s.key} onClick={() => setFilterStatus(s.key)} style={{
+            <button key={s.key} onClick={() => handleFilter(s.key)} style={{
               padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13,
               background: filterStatus === s.key ? s.color : s.bg, color: filterStatus === s.key ? 'white' : s.color
             }}>{s.label} ({cnt})</button>
@@ -415,26 +452,47 @@ function StatusTab({ orders, onRefresh }) {
         })}
       </div>
 
-      {/* Luồng trạng thái */}
-      <div style={{ background: 'white', borderRadius: 14, padding: 16, marginBottom: 20, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', marginBottom: 12 }}>📋 Luồng chuyển trạng thái</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-          {STATUS_LIST.map((s, i) => (
-            <span key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ padding: '4px 10px', borderRadius: 12, background: s.bg, color: s.color, fontSize: 12, fontWeight: 600 }}>{s.label}</span>
-              {i < STATUS_LIST.length - 1 && <span style={{ color: '#9ca3af', fontSize: 16 }}>→</span>}
-            </span>
-          ))}
+      {/* Toolbar chọn hàng loạt */}
+      {selected.length > 0 && (
+        <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#eff6ff', borderRadius:12, marginBottom:16, flexWrap:'wrap' }}>
+          <span style={{ fontSize:13, fontWeight:600, color:'#1d4ed8' }}>
+            ☑️ Đã chọn {selected.length} đơn
+          </span>
+          {bulkUpdating ? (
+            <span style={{ fontSize:13, color:'#6b7280' }}>⏳ Đang cập nhật...</span>
+          ) : commonNexts.length > 0 ? (
+            <>
+              <span style={{ fontSize:12, color:'#6b7280' }}>Chuyển tất cả sang:</span>
+              {commonNexts.map(nk => {
+                const nm = statusMeta(nk)
+                return (
+                  <button key={nk} onClick={() => handleBulk(nk)} style={{
+                    padding: '6px 14px', border: `1.5px solid ${nm.color}`, borderRadius: 8,
+                    background: nm.bg, color: nm.color, cursor: 'pointer', fontSize: 13, fontWeight: 700
+                  }}>{nm.label}</button>
+                )
+              })}
+            </>
+          ) : (
+            <span style={{ fontSize:12, color:'#9ca3af' }}>Các đơn đã chọn không có trạng thái kế tiếp chung</span>
+          )}
+          <button onClick={() => setSelected([])} style={{ marginLeft:'auto', fontSize:12, color:'#6b7280', background:'none', border:'none', cursor:'pointer' }}>✕ Bỏ chọn</button>
         </div>
-      </div>
+      )}
 
       {/* Bảng đơn hàng */}
       <div style={{ background: 'white', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ background: 'var(--cream)' }}>
-            <tr>{['Mã ĐH', 'Khách hàng', 'Tổng tiền', 'Ngày đặt', 'Trạng thái', 'Chuyển sang'].map(h => (
-              <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 13, color: 'var(--text-mid)', fontWeight: 600 }}>{h}</th>
-            ))}</tr>
+            <tr>
+              <th style={{ padding: '12px 14px', width: 40 }}>
+                <input type="checkbox" checked={isAllChecked} ref={el => { if(el) el.indeterminate = isIndeterminate }}
+                  onChange={toggleAll} style={{ accentColor: 'var(--green-mid)', width:16, height:16, cursor:'pointer' }} />
+              </th>
+              {['Mã ĐH', 'Khách hàng', 'Tổng tiền', 'Ngày đặt', 'Trạng thái', 'Chuyển sang'].map(h => (
+                <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 13, color: 'var(--text-mid)', fontWeight: 600 }}>{h}</th>
+              ))}
+            </tr>
           </thead>
           <tbody>
             {filtered.map(o => {
@@ -442,8 +500,13 @@ function StatusTab({ orders, onRefresh }) {
               const sm = statusMeta(o.TRANG_THAI)
               const nexts = NEXT_MAP[normStatus] || []
               const isUpdating = updating === o.MA_DH
+              const isChecked  = selected.includes(o.MA_DH)
               return (
-                <tr key={o.MA_DH} style={{ borderTop: '1px solid var(--cream-dark)' }}>
+                <tr key={o.MA_DH} style={{ borderTop: '1px solid var(--cream-dark)', background: isChecked ? '#f0f9ff' : 'white' }}>
+                  <td style={{ padding: '12px 14px' }}>
+                    <input type="checkbox" checked={isChecked} onChange={() => toggleOne(o.MA_DH)}
+                      style={{ accentColor: 'var(--green-mid)', width:16, height:16, cursor:'pointer' }} />
+                  </td>
                   <td style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--green-dark)' }}>#{o.MA_DH}</td>
                   <td style={{ padding: '12px 14px', fontSize: 13 }}>{o.HO_TEN || `KH#${o.MA_KH}`}</td>
                   <td style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--gold)' }}>{formatPrice(o.TONG_TIEN)}</td>
@@ -474,7 +537,7 @@ function StatusTab({ orders, onRefresh }) {
               )
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={6} style={{ padding: 32, textAlign: 'center', color: 'var(--text-light)' }}>Không có đơn hàng nào</td></tr>
+              <tr><td colSpan={7} style={{ padding: 32, textAlign: 'center', color: 'var(--text-light)' }}>Không có đơn hàng nào</td></tr>
             )}
           </tbody>
         </table>

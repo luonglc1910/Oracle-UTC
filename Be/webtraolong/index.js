@@ -39,6 +39,24 @@ async function startServer () {
       console.log('Server running on port 3000')
     })
 
+    // ⏱ Cron: Tự động chuyển đơn 'da_giao_hang' → 'danh_gia' sau 30 giây
+    setInterval(async () => {
+      try {
+        const result = await db.execute(
+          `UPDATE TRA_OLONG.DON_HANG
+           SET TRANG_THAI = 'danh_gia'
+           WHERE TRANG_THAI = 'da_giao_hang'`,
+          {},
+          { autoCommit: true }
+        )
+        if (result.rowsAffected > 0) {
+          console.log(`[Cron] Auto-chuyển ${result.rowsAffected} đơn đã giao hàng → chờ đánh giá`)
+        }
+      } catch (err) {
+        console.error('[Cron] Lỗi auto-danh_gia:', err.message)
+      }
+    }, 30000) // chạy mỗi 30 giây
+
     // ⏱ Cron: Tự động chuyển đơn 'danh_gia' → 'hoan_thanh' sau 30 giây
     setInterval(async () => {
       try {

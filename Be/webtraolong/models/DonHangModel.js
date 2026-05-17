@@ -44,12 +44,13 @@ class DonHangModel {
        FROM TRA_OLONG.DON_HANG
        GROUP BY TRANG_THAI`
     )
-    // Doanh thu theo tháng: chỉ tính đơn đã giao / chờ đánh giá / hoàn thành
+    // Doanh thu theo tháng: lấy toàn bộ lịch sử, chỉ tính đơn đã giao / chờ đánh giá / hoàn thành
     const revenueByMonth = await db.execute(
-      `SELECT TO_CHAR(NGAY_DAT,'MM/YYYY') AS THANG, COUNT(*) AS SO_DON, SUM(TONG_TIEN) AS DOANH_THU
+      `SELECT TO_CHAR(NGAY_DAT,'MM/YYYY') AS THANG,
+              COUNT(*) AS SO_DON,
+              SUM(TONG_TIEN) AS DOANH_THU
        FROM TRA_OLONG.DON_HANG
-       WHERE NGAY_DAT >= ADD_MONTHS(SYSDATE,-11)
-         AND TRANG_THAI IN ('da_giao_hang','danh_gia','hoan_thanh')
+       WHERE TRANG_THAI IN ('da_giao_hang','danh_gia','hoan_thanh')
        GROUP BY TO_CHAR(NGAY_DAT,'MM/YYYY')
        ORDER BY MIN(NGAY_DAT)`
     )
@@ -72,23 +73,26 @@ class DonHangModel {
   }
 
   static async create (data) {
-    return await db.execute(
+    const result = await db.execute(
       `INSERT INTO TRA_OLONG.DON_HANG
-        (MA_KH, MA_NV, NGAY_DAT, TONG_TIEN, PHI_VAN_CHUYEN, GIAM_GIA, TRANG_THAI, GHI_CHU, DIA_CHI_GIAO, NGAY_GIAO_DK)
+        (MA_DH, MA_KH, MA_NV, NGAY_DAT, TONG_TIEN, PHI_VAN_CHUYEN, GIAM_GIA, TRANG_THAI, GHI_CHU, DIA_CHI_GIAO, NGAY_GIAO_DK)
        VALUES
-        (:maKh, :maNv, SYSDATE, :tongTien, :phiVanChuyen, :giamGia, :trangThai, :ghiChu, :diaChiGiao, :ngayGiaoDk)`,
+        (TRA_OLONG.SEQ_DH.NEXTVAL, :maKh, :maNv, SYSDATE, :tongTien, :phiVanChuyen, :giamGia, 'cho_xac_nhan', :ghiChu, :diaChiGiao, :ngayGiaoDk)
+       RETURNING MA_DH INTO :maDh`,
       {
         maKh: data.ma_kh,
-        maNv: data.ma_nv,
+        maNv: data.ma_nv || null,
         tongTien: data.tong_tien,
         phiVanChuyen: data.phi_van_chuyen ?? 0,
         giamGia: data.giam_gia ?? 0,
-        trangThai: data.trang_thai ?? 'cho_xac_nhan',
-        ghiChu: data.ghi_chu,
-        diaChiGiao: data.dia_chi_giao,
-        ngayGiaoDk: data.ngay_giao_dk
-      }
+        ghiChu: data.ghi_chu || null,
+        diaChiGiao: data.dia_chi_giao || null,
+        ngayGiaoDk: data.ngay_giao_dk || null,
+        maDh: { dir: require('oracledb').BIND_OUT, type: require('oracledb').NUMBER }
+      },
+      { autoCommit: true }
     )
+    return result.outBinds.maDh[0]
   }
 
   static async update (id, data) {

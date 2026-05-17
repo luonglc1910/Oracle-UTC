@@ -128,7 +128,7 @@ export default function Home() {
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px,1fr))', gap:24 }}>
             {[['🌿','Nguyên Chất 100%','Trà được thu hái từ những vườn chè sạch, không hóa chất'],
-              ['🚚','Giao Hàng Nhanh','Giao trong 24h tại TP.HCM, 2-3 ngày toàn quốc'],
+              ['🚚','Giao Hàng Nhanh','Giao trong 24h tại TP.Hà Nội, 2-3 ngày toàn quốc'],
               ['✨','Chất Lượng Cao','Được kiểm định chất lượng theo tiêu chuẩn quốc tế'],
               ['🔄','Đổi Trả Dễ Dàng','30 ngày đổi trả nếu không hài lòng']
             ].map(([icon,title,desc]) => (

@@ -14,13 +14,17 @@ const PAYMENT_OPTS = [
 export default function Checkout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { cart, clearCart, user } = useCart()
+  const { cart, clearCart, user, khachHang } = useCart()
   const { discount, shipping = 30000, finalTotal } = location.state || {}
   const [payment, setPayment] = useState('tien_mat')
   const [loading, setLoading] = useState(false)
+  const kh = khachHang  // khách hàng đăng nhập
   const [form, setForm] = useState({
-    ho_ten: user?.HO_TEN || '', email: user?.EMAIL || '',
-    dien_thoai: user?.DIEN_THOAI || '', dia_chi: '', ghi_chu: ''
+    ho_ten:    kh?.HO_TEN    || '',
+    email:     kh?.EMAIL     || '',
+    dien_thoai:kh?.DIEN_THOAI|| '',
+    dia_chi:   kh?.DIA_CHI   || '',
+    ghi_chu:   ''
   })
 
   const totalPrice = cart.reduce((s, i) => s + i.GIA_BAN * i.qty, 0)
@@ -36,7 +40,7 @@ export default function Checkout() {
     setLoading(true)
     try {
       // Tạo / lấy khách hàng
-      let maKh = user?.MA_KH
+      let maKh = kh?.MA_KH || user?.MA_KH
       if (!maKh) {
         const khRes = await khachHangApi.create({
           ho_ten: form.ho_ten, email: form.email,
@@ -86,6 +90,11 @@ export default function Checkout() {
           <div>
             <div className="form-card">
               <h3>📋 Thông tin nhận hàng</h3>
+              {kh && (
+                <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:'#f0fdf4', borderRadius:8, marginBottom:16, fontSize:13, color:'#16a34a' }}>
+                  ✅ Đã điền thông tin từ tài khoản <strong>{kh.HO_TEN}</strong>
+                </div>
+              )}
               <div className="form-row">
                 <div className="form-group">
                   <label>Họ và tên *</label>

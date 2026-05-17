@@ -27,18 +27,27 @@ class ThanhToanModel {
   }
 
   static async create (data) {
+    // Map frontend values → DB constraint values
+    const phuongThucMap = {
+      'tien_mat': 'COD', 'cod': 'COD',
+      'chuyen_khoan': 'Bank_Transfer', 'bank_transfer': 'Bank_Transfer',
+      'vi_dien_tu': 'VNPay', 'vnpay': 'VNPay',
+      'momo': 'Momo', 'zalopay': 'ZaloPay'
+    }
+    const phuongThuc = phuongThucMap[(data.phuong_thuc || '').toLowerCase()] || 'COD'
+
     return await db.execute(
       `INSERT INTO TRA_OLONG.THANH_TOAN
-        (MA_DH, PHUONG_THUC, SO_TIEN, NGAY_THANH_TOAN, TRANG_THAI, MA_GIAO_DICH)
+        (MA_TT, MA_DH, PHUONG_THUC, SO_TIEN, NGAY_THANH_TOAN, TRANG_THAI, MA_GIAO_DICH)
        VALUES
-        (:maDh, :phuongThuc, :soTien, SYSDATE, :trangThai, :maGiaoDich)`,
+        (TRA_OLONG.SEQ_TT.NEXTVAL, :maDh, :phuongThuc, :soTien, SYSDATE, 'Cho_thanh_toan', :maGiaoDich)`,
       {
         maDh: data.ma_dh,
-        phuongThuc: data.phuong_thuc,
+        phuongThuc,
         soTien: data.so_tien,
-        trangThai: data.trang_thai ?? 'cho_xu_ly',
-        maGiaoDich: data.ma_giao_dich
-      }
+        maGiaoDich: data.ma_giao_dich || null
+      },
+      { autoCommit: true }
     )
   }
 
