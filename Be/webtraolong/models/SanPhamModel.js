@@ -34,7 +34,7 @@ class SanPhamModel {
   static async create (data) {
     return await db.execute(
       `INSERT INTO TRA_OLONG.SAN_PHAM
-        (TEN_SP, MA_DANH_MUC, MA_NCC, GIA_BAN, GIA_NHAP, TRONG_LUONG, MO_TA, HINH_ANH, TON_KHO, TRANG_THAI, NGAY_THEM)
+        (TEN_SP, MA_DANH_MUC, MA_NCC, GIA_BAN, GIA_NHAP, TRONG_LUONG, MO_TA, HINH_ANH, SO_LUONG, TRANG_THAI, NGAY_TAO)
        VALUES
         (:tenSp, :maDanhMuc, :maNcc, :giaBan, :giaNhap, :trongLuong, :moTa, :hinhAnh, :tonKho, :trangThai, SYSDATE)`,
       {
