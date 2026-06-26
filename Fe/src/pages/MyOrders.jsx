@@ -147,7 +147,7 @@ export default function MyOrders() {
                             </div>
                           </div>
                           <div style={{ fontWeight:700, color:'var(--gold)' }}>
-                            {formatPrice((ct.THANH_TIEN) || ct.DON_GIA * ct.SO_LUONG)}
+                            {formatPrice((ct.TONG_TIEN) || ct.DON_GIA * ct.SO_LUONG)}
                           </div>
                         </div>
                       ))}

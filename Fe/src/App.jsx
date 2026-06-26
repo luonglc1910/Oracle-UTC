@@ -12,7 +12,7 @@ import OrderSuccess from './pages/OrderSuccess'
 import MyOrders from './pages/MyOrders'
 import Register from './pages/Register'
 import Login from './pages/Login'
-import AdminDashboard from './pages/AdminDashboard'
+import AdminDashboard from './pages/admin/AdminDashboard'
 
 function AppLayout({ children }) {
   return (

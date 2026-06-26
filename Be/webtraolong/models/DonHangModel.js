@@ -56,7 +56,7 @@ class DonHangModel {
     )
     // Top sản phẩm: chỉ tính đơn đã giao / chờ đánh giá / hoàn thành
     const topProducts = await db.execute(
-      `SELECT sp.TEN_SP, SUM(ct.SO_LUONG) AS TONG_BAN, SUM(ct.THANH_TIEN) AS DOANH_THU
+      `SELECT sp.TEN_SP, SUM(ct.SO_LUONG) AS TONG_BAN, SUM(ct.SO_LUONG * ct.DON_GIA) AS DOANH_THU
        FROM TRA_OLONG.CHI_TIET_DH ct
        JOIN TRA_OLONG.SAN_PHAM sp ON ct.MA_SP = sp.MA_SP
        JOIN TRA_OLONG.DON_HANG dh ON ct.MA_DH = dh.MA_DH
